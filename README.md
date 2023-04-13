@@ -19,5 +19,5 @@ cmake --build . --target install --config Debug
 
 # References
 
-1. (C++ compiler support)[https://runebook.dev/en/docs/cpp/compiler_support#C.2B.2B23_library_features]
+1. [C++ compiler support](https://runebook.dev/en/docs/cpp/compiler_support#C.2B.2B23_library_features)
 
