@@ -4,7 +4,9 @@
 #include <future>
 #include <thread>
 #include <atomic>
+#include <optional>
 #include <chrono>
+#include <type_traits>
 #include <cstdint>
 
 #include "ccqueue.hpp"
@@ -19,7 +21,7 @@ public:
     static constexpr std::size_t kTaskQueueSize { 255 };
     static constexpr bool kTaskQueueSentinel { true };
 
-    using Task = std::packaged_task<void()>;
+    using Task = std::move_only_function<void()>;
 
     ThreadPool(std::size_t threads);
 
@@ -31,7 +33,27 @@ public:
 
     ~ThreadPool();
     
-    bool Post(Task task);
+    template<class Func, class ...Args>
+    auto Post(Func &&f, Args&&... args) { // -> std::optional<std::future<std::invoke_result_t<Func&&, Args&&...>>> 
+        using R = std::invoke_result_t<Func&&, Args&&...>;
+
+        std::packaged_task<R()> task { [func = std::forward<Func>(f)
+            , ...params = std::forward<Args>(args)]() mutable
+        {
+            if constexpr (std::is_same_v<R, void>) {
+                std::invoke(std::forward<Func>(func), std::forward<Args>(params)...);
+            }
+            else {
+                return std::invoke(std::forward<Func>(func), std::forward<Args>(params)...);
+            }    
+        }};
+        auto fut = task.get_future();
+        if (!pending_tasks_.TryPush(std::move(task))) {
+            return std::nullopt;
+        }
+        return std::make_optional(fut);
+    }
+
 
     void Start();
     void Stop() noexcept;

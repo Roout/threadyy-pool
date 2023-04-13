@@ -12,10 +12,6 @@ ThreadPool::~ThreadPool() {
     stopped_.store(true, std::memory_order_release);
 }
 
-bool ThreadPool::Post(Task task) {
-    return pending_tasks_.TryPush(std::move(task));
-}
-
 void ThreadPool::Start() {
     for (std::size_t i = 0; i < worker_count_; i++) {
         workers_[i] = std::jthread{ [this](std::stop_token stop) {
