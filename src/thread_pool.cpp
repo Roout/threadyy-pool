@@ -36,14 +36,14 @@ void ThreadPool::Start() {
     stopped_.store(false, std::memory_order_release);
 }
 
-void ThreadPool::Stop() noexcept {
+void ThreadPool::Stop() {
     if (kTaskQueueSentinel) pending_tasks_.DisableSentinel();
     stopped_.store(true, std::memory_order_release);
     for (auto&& worker: workers_) {
         (void) worker.request_stop();
     }
     for (auto&& worker: workers_) {
-        (void) worker.join();
+        worker.join();
     }
     workers_.clear();
 }

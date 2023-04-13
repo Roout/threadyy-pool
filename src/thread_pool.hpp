@@ -56,7 +56,7 @@ public:
 
 
     void Start();
-    void Stop() noexcept;
+    void Stop();
 
     std::size_t Size() const noexcept {
         return worker_count_;
