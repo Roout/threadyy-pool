@@ -34,7 +34,9 @@ public:
     ~ThreadPool();
     
     template<class Func, class ...Args>
-    auto Post(Func &&f, Args&&... args) { // -> std::optional<std::future<std::invoke_result_t<Func&&, Args&&...>>> 
+    [[nodiscard]] auto Post(Func &&f, Args&&... args)
+        -> std::optional<std::future<std::invoke_result_t<Func&&, Args&&...>>>
+    {
         using R = std::invoke_result_t<Func&&, Args&&...>;
 
         std::packaged_task<R()> task { [func = std::forward<Func>(f)
@@ -51,7 +53,7 @@ public:
         if (!pending_tasks_.TryPush(std::move(task))) {
             return std::nullopt;
         }
-        return std::make_optional(fut);
+        return std::make_optional(std::move(fut));
     }
 
 

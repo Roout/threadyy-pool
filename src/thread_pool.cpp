@@ -9,6 +9,7 @@ ThreadPool::ThreadPool(std::size_t threads)
 {}
 
 ThreadPool::~ThreadPool() {
+    if (kTaskQueueSentinel) pending_tasks_.DisableSentinel();
     stopped_.store(true, std::memory_order_release);
 }
 
@@ -19,7 +20,8 @@ void ThreadPool::Start() {
                 try {
                     auto top = pending_tasks_.TryPop();
                     if (!top) {
-                        // TODO: log as fatal
+                        // TODO: maybe queue sentinel is gone
+                        continue;
                     }
                     active_tasks_.fetch_add(1, std::memory_order_relaxed);
                     std::invoke(*top);
@@ -35,10 +37,15 @@ void ThreadPool::Start() {
 }
 
 void ThreadPool::Stop() noexcept {
+    if (kTaskQueueSentinel) pending_tasks_.DisableSentinel();
     stopped_.store(true, std::memory_order_release);
     for (auto&& worker: workers_) {
         (void) worker.request_stop();
     }
+    for (auto&& worker: workers_) {
+        (void) worker.join();
+    }
+    workers_.clear();
 }
 
 
