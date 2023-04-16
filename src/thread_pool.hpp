@@ -25,10 +25,10 @@ public:
     ThreadPool(std::size_t threads);
 
     ThreadPool(const ThreadPool&) = delete;
-    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool& operator=(const ThreadPool&) = default;
 
-    ThreadPool& operator=(const ThreadPool&) = delete;
     ThreadPool& operator=(ThreadPool&&) = delete;
+    ThreadPool(ThreadPool&&) = default;
 
     ~ThreadPool();
     
