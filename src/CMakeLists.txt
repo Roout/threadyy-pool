@@ -1,10 +1,7 @@
-cmake_minimum_required (VERSION 3.20)
+cmake_minimum_required (VERSION 3.20.0)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-set(headers)
-set(sources)
 
 list(APPEND headers
     "ccqueue.hpp"
@@ -19,6 +16,14 @@ list(APPEND sources
 )
 
 add_executable(${This} ${sources} ${headers})
+add_library(${This}_lib STATIC ${sources} ${headers})
+
+# Expose public includes to other
+# subprojects through cache variable.
+set(${This}_INCLUDE_DIRS
+  ${PROJECT_SOURCE_DIR}/sec
+  CACHE INTERNAL "${This}: Include Directories" FORCE
+)
 
 target_compile_options(${This} PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:$<$<CXX_COMPILER_ID:Clang>:-Wall -Werror -Wextra>>
@@ -26,4 +31,4 @@ target_compile_options(${This} PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:$<$<CXX_COMPILER_ID:MSVC>:/W3>>
 )
 
-install(TARGETS ${This} DESTINATION ${CMAKE_BINARY_DIR}/bin)
+install(TARGETS ${This} ${This}_lib DESTINATION ${CMAKE_BINARY_DIR}/bin)
