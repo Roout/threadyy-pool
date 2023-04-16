@@ -6,6 +6,7 @@
 #include <atomic>
 #include <optional>
 #include <type_traits>
+#include <concepts>
 #include <cstdint>
 
 #include "ccqueue.hpp"

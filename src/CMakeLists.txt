@@ -1,8 +1,5 @@
 cmake_minimum_required (VERSION 3.20.0)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 list(APPEND headers
     "ccqueue.hpp"
     "thread_pool.hpp"
@@ -21,7 +18,7 @@ add_library(${This}_lib STATIC ${sources} ${headers})
 # Expose public includes to other
 # subprojects through cache variable.
 set(${This}_INCLUDE_DIRS
-  ${PROJECT_SOURCE_DIR}/sec
+  ${PROJECT_SOURCE_DIR}/src
   CACHE INTERNAL "${This}: Include Directories" FORCE
 )
 
