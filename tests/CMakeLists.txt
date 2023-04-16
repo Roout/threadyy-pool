@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20.0)
 set(This executor_tests)
 
 set(headers 
+    thread_pool_test.hpp
 )
 
 set(sources
