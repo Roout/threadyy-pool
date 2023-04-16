@@ -6,6 +6,7 @@ Make thread pool
 
 - c++23: it uses `std::move_only_function` which you can implement yourself for old standards and compilers
 - cmake
+- gtest: added as external project downloaded via cmake
 
 ## Build
 
