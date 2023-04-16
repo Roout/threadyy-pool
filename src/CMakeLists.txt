@@ -9,11 +9,13 @@ set(sources)
 list(APPEND headers
     "ccqueue.hpp"
     "thread_pool.hpp"
+    "scheduler.hpp"
 )
-
-list(APPEND sources 
+    
+list(APPEND sources
     "main.cpp"
     "thread_pool.cpp"
+    "scheduler.cpp"
 )
 
 add_executable(${This} ${sources} ${headers})
