@@ -45,7 +45,6 @@ void ThreadPool::Stop() {
     for (auto&& worker: workers_) {
         worker.join();
     }
-    workers_.clear();
 }
 
 
