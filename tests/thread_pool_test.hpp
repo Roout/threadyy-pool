@@ -70,8 +70,6 @@ TEST(thread_pool, access_future_from_post_result) {
 }
 
 TEST(thread_pool, start_after_stop) {
-    using namespace std::chrono_literals;
-
     static constexpr std::size_t kWorkers{5};
     klyaksa::ThreadPool executor{kWorkers};
 
@@ -104,3 +102,44 @@ TEST(thread_pool, start_after_stop) {
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 }
 
+TEST(thread_pool, dtor_after_stop) {
+    static constexpr std::size_t kWorkers{5};
+    {
+        klyaksa::ThreadPool executor{kWorkers};
+
+        ASSERT_TRUE(executor.IsStopped());
+        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.GetActiveTasks(), 0);
+
+        executor.Start();
+        
+        ASSERT_TRUE(!executor.IsStopped());
+        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.GetActiveTasks(), 0);
+
+        executor.Stop();
+
+        ASSERT_TRUE(executor.IsStopped());
+        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.GetActiveTasks(), 0);
+    }
+    ASSERT_TRUE(true) << "unreachable";
+}
+
+TEST(thread_pool, dtor_after_start) {
+    static constexpr std::size_t kWorkers{5};
+    {
+        klyaksa::ThreadPool executor{kWorkers};
+
+        ASSERT_TRUE(executor.IsStopped());
+        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.GetActiveTasks(), 0);
+
+        executor.Start();
+        
+        ASSERT_TRUE(!executor.IsStopped());
+        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.GetActiveTasks(), 0);
+    }
+    ASSERT_TRUE(true) << "unreachable";
+}
