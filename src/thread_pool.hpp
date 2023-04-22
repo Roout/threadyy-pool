@@ -7,6 +7,7 @@
 #include <optional>
 #include <type_traits>
 #include <cstdint>
+#include <functional>
 
 #include "ccqueue.hpp"
 
