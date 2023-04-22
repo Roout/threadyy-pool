@@ -3,7 +3,8 @@
 
 
 int main() {
-    klyaksa::ThreadPool pool {2};
+    static constexpr std::size_t kWorkers{5};
+    klyaksa::ThreadPool pool {kWorkers};
     std::atomic<int> counter;
     std::atomic<bool> stopped { false };
     auto console = pool.Post([&](){
@@ -24,5 +25,10 @@ int main() {
     pool.Stop();
     std::cout << "\nastrics: " << console.get() << '\n';
     std::cout << counter << '\n';
+
+    for (std::size_t i = 0; i < 1000; i++) {
+        pool.Start();
+        pool.Stop();
+    }
     return 0;
 }
