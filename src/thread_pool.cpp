@@ -4,8 +4,8 @@ namespace klyaksa {
 
 ThreadPool::ThreadPool(std::size_t threads)
     : worker_count_ { threads }
-    , workers_ { threads }
     , pending_tasks_ { kTaskQueueSentinel }
+    , workers_ { threads }
 {}
 
 ThreadPool::~ThreadPool() {

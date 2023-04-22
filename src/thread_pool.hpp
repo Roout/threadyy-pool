@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <concepts>
 #include <cstdint>
+#include <functional>
 
 #include "ccqueue.hpp"
 
@@ -97,8 +98,8 @@ private:
     std::atomic<bool> stopped_ { true };
     // number of tasks currently running
     std::atomic<std::size_t> active_tasks_ { 0 };
-    std::vector<std::jthread> workers_;
     Queue pending_tasks_;
+    std::vector<std::jthread> workers_;
 };
 
 } // namespace klyaksa
