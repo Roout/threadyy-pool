@@ -34,7 +34,7 @@ public:
     // otherwise return false on failure and doesn't block
     [[nodiscard]] bool TryPush(element cmd) {
         bool is_pushed = false;
-        if (std::unique_lock<std::mutex> lock { mutex_ }; 
+        if (std::unique_lock<std::mutex> lock { mutex_ };
             !IsFull()
         ) {
             PushBack(std::move(cmd));
@@ -50,9 +50,9 @@ public:
     // otherwise blocks
     // Note: it ignores sentinel so you can't stop consumer thread
     [[nodiscard]] element Pop() {
-        std::unique_lock<std::mutex> lock { mutex_ };  
-        notifier_.wait(lock, [this]() { 
-            return !IsEmpty(); 
+        std::unique_lock<std::mutex> lock { mutex_ };
+        notifier_.wait(lock, [this]() {
+            return !IsEmpty();
         });
         return PopFront();
     }
@@ -63,10 +63,10 @@ public:
     [[nodiscard]] std::optional<element> TryPop() {
         std::optional<element> result{};
  
-        std::unique_lock<std::mutex> lock { mutex_ };  
-        notifier_.wait(lock, [this]() { 
+        std::unique_lock<std::mutex> lock { mutex_ };
+        notifier_.wait(lock, [this]() {
             // wait (block) while the <empty> queue has <sentinel>
-            return !(IsEmpty() && sentinel_.load(std::memory_order_relaxed)); 
+            return !IsEmpty() || !sentinel_.load(std::memory_order_relaxed);
         });
         if (!IsEmpty()) {
             result.emplace(PopFront());
@@ -78,6 +78,11 @@ public:
     void DisableSentinel() noexcept {
         sentinel_.store(false, std::memory_order_relaxed);
         notifier_.notify_all();
+    }
+
+    void EnableSentinel() noexcept {
+        sentinel_.store(true, std::memory_order_relaxed);
+       // no need to notify as noone wait on it: notifier_.notify_all();
     }
  
 private:
@@ -112,4 +117,4 @@ private:
     std::size_t back_ { 0 };
     std::size_t size_ { 0 };
     std::atomic<bool> sentinel_;
-};
+}; 
