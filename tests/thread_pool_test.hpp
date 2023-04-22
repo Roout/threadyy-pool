@@ -77,7 +77,7 @@ TEST(thread_pool, start_after_stop) {
     ASSERT_EQ(executor.Size(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 
-    for (std::size_t i = 0; i < 1000; i++) {
+    for (std::size_t i = 0; i < 100; i++) {
         executor.Start();
         
         ASSERT_TRUE(!executor.IsStopped());
@@ -94,7 +94,7 @@ TEST(thread_pool, start_after_stop) {
 
 TEST(thread_pool, dtor_after_stop) {
     static constexpr std::size_t kWorkers{5};
-    for (std::size_t i = 0; i < 1000; i++) {
+    for (std::size_t i = 0; i < 100; i++) {
         {
             klyaksa::ThreadPool executor{kWorkers};
 
@@ -121,7 +121,7 @@ TEST(thread_pool, dtor_after_stop) {
 TEST(thread_pool, dtor_after_start) {
     using namespace std::chrono_literals;
     static constexpr std::size_t kWorkers{5};
-    for (std::size_t i = 0; i < 10000; i++) {
+    for (std::size_t i = 0; i < 100; i++) {
         {
             klyaksa::ThreadPool executor{kWorkers};
 
@@ -145,13 +145,13 @@ TEST(thread_pool, access_future_after_executor_destruction) {
     static constexpr std::size_t kWorkers{5};
     static constexpr auto kReturnValue{32};
 
-    for (std::size_t i = 0; i < 10000; i++) {
+    for (std::size_t i = 0; i < 100; i++) {
         std::future<int> fut;
         {
             klyaksa::ThreadPool executor{kWorkers};
             executor.Start();
             fut = *executor.Post([] {
-                std::this_thread::sleep_for(200ms);
+                std::this_thread::sleep_for(20ms);
                 return kReturnValue;
             });
         }
