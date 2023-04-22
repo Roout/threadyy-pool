@@ -9,13 +9,18 @@ ThreadPool::ThreadPool(std::size_t threads)
 {}
 
 ThreadPool::~ThreadPool() {
-    if (kTaskQueueSentinel) pending_tasks_.DisableSentinel();
     stopped_.store(true, std::memory_order_release);
+    if (kTaskQueueSentinel) {
+        pending_tasks_.DisableSentinel();
+    }
 }
 
 void ThreadPool::Start() {
+    if (kTaskQueueSentinel) {
+        pending_tasks_.EnableSentinel();
+    }
     for (std::size_t i = 0; i < worker_count_; i++) {
-        workers_[i] = std::jthread{ [this](std::stop_token stop) {
+        auto worker = [this](std::stop_token stop) {
             while (!stop.stop_requested()) {
                 try {
                     auto top = pending_tasks_.TryPop();
@@ -31,19 +36,26 @@ void ThreadPool::Start() {
                     // TODO: log error
                 }
             }
-        }};
+        };
+        workers_[i] = std::jthread{std::move(worker)};
     }
     stopped_.store(false, std::memory_order_release);
 }
 
 void ThreadPool::Stop() {
-    if (kTaskQueueSentinel) pending_tasks_.DisableSentinel();
+    if (stopped_.load(std::memory_order_acquire)) {
+        return;
+    }
     stopped_.store(true, std::memory_order_release);
-    for (auto&& worker: workers_) {
-        (void) worker.request_stop();
+
+    if (kTaskQueueSentinel) {
+        pending_tasks_.DisableSentinel();
     }
     for (auto&& worker: workers_) {
-        worker.join();
+        if (worker.joinable()) {
+            worker.request_stop();
+            worker.join();
+        }
     }
 }
 
