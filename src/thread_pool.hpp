@@ -20,7 +20,6 @@ namespace klyaksa {
 class ThreadPool final {
 public:
     static constexpr std::size_t kTaskQueueSize { 255 };
-    static constexpr bool kTaskQueueSentinel { true };
 
     using Task = std::move_only_function<void()>;
 

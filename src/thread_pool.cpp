@@ -4,21 +4,16 @@ namespace klyaksa {
 
 ThreadPool::ThreadPool(std::size_t threads)
     : worker_count_ { threads }
-    , pending_tasks_ { kTaskQueueSentinel }
     , workers_ { threads }
 {}
 
 ThreadPool::~ThreadPool() {
     stopped_.store(true, std::memory_order_release);
-    if (kTaskQueueSentinel) {
-        pending_tasks_.DisableSentinel();
-    }
+    pending_tasks_.Halt();
 }
 
 void ThreadPool::Start() {
-    if (kTaskQueueSentinel) {
-        pending_tasks_.EnableSentinel();
-    }
+    pending_tasks_.Run();
     for (std::size_t i = 0; i < worker_count_; i++) {
         auto worker = [this](std::stop_token stop) {
             while (!stop.stop_requested()) {
@@ -48,9 +43,7 @@ void ThreadPool::Stop() {
     }
     stopped_.store(true, std::memory_order_release);
 
-    if (kTaskQueueSentinel) {
-        pending_tasks_.DisableSentinel();
-    }
+    pending_tasks_.Halt();
     for (auto&& worker: workers_) {
         if (worker.joinable()) {
             worker.request_stop();
