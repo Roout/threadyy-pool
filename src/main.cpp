@@ -26,9 +26,10 @@ int main() {
     std::cout << "\nastrics: " << console.get() << '\n';
     std::cout << counter << '\n';
 
-    for (std::size_t i = 0; i < 1000; i++) {
+    for (std::size_t i = 0; i < 500; i++) {
         pool.Start();
         pool.Stop();
     }
+    std::cout << "End\n";
     return 0;
 }
