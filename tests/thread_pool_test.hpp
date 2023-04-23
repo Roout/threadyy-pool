@@ -154,6 +154,10 @@ TEST(thread_pool, access_future_after_executor_destruction) {
                 std::this_thread::sleep_for(20ms);
                 return kReturnValue;
             });
+            // sleep required to have time to at least start execution of job
+            // otherwise it's possible that packaged_task is not being called
+            // which leads to `broken promise` exception
+            std::this_thread::sleep_for(5ms);
         }
         ASSERT_TRUE(fut.valid());
         ASSERT_EQ(fut.get(), kReturnValue);
