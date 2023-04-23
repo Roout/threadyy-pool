@@ -49,11 +49,10 @@ private:
 private:
     ThreadPool *executor_;
 
-    std::jthread timer_;
-    bool vault_add_;
     mutable std::mutex vault_mutex_;
     std::condition_variable vault_waiter_;
     std::multimap<Timepoint, Callback> vault_;
+    std::jthread timer_;
 };
 
 } // namespace klyaksa

@@ -8,7 +8,6 @@ namespace klyaksa {
 Scheduler::Scheduler(ThreadPool *executor)
     : executor_ { executor }
     , timer_ {[this](std::stop_token token) { TimerWorker(token); } }
-    , vault_add_ { false }
 {
 }
 
@@ -21,7 +20,6 @@ void Scheduler::ScheduleAt(Timepoint tp, Callback &&cb) {
     std::unique_lock lock{vault_mutex_};
     vault_.emplace(tp, std::move(cb));
     lock.unlock();
-    vault_add_ = true;
     vault_waiter_.notify_one();
 }
 
@@ -30,44 +28,47 @@ void Scheduler::ScheduleAfter(Timeout delay, Callback &&cb) {
 }
 
 void Scheduler::TimerWorker(std::stop_token stop_token) {
+    static constexpr Timeout kSleepTimeout { 100 };
     auto need_wakeup = [this, stop_token]() noexcept {
-        return vault_add_ || stop_token.stop_requested();
+        return !vault_.empty() || stop_token.stop_requested();
     };
     while (!stop_token.stop_requested()) {
-        const auto before_wait = Now();
+        const auto now = Now();
         std::unique_lock lock{vault_mutex_};
         if (!vault_.empty()) { // need to wait for the next scheduled callback
-            const auto next_wakeup = vault_.cbegin()->first;
-            if (next_wakeup <= before_wait) {
-                // avoid possible signal + timeout report
-                SubmitExpiredBefore(before_wait);
+            auto next_wakeup = vault_.cbegin()->first;
+            if (next_wakeup <= now) {
+                // avoid possible signal + timeout report on cv
+                SubmitExpiredBefore(now);
                 continue;
             }
-            bool is_timeout = vault_waiter_.wait_until(lock, next_wakeup, need_wakeup);
-            if (is_timeout) {
-                // timeout occured so there is something to submit to executor
+            next_wakeup = std::min(next_wakeup, now + kSleepTimeout);
+            bool wakeup_result = vault_waiter_.wait_until(lock, next_wakeup, need_wakeup);
+            if (wakeup_result && !vault_.empty()) {
+                // cv predecate return true; don't submit if stopped
                 SubmitExpiredBefore(Now());
             }
-            // otherwise (vault_add_ == true) and we need to update waiting time 
+            // otherwise still need to sleep
         }
         else { // no callback scheduled so wait until any callback will be scheduled
-            vault_waiter_.wait(lock, need_wakeup);
+            (void) vault_waiter_.wait_for(lock, kSleepTimeout, need_wakeup);
+            // just wake up due to either timeout either stop predicate
         }
     }
 };
 
 void Scheduler::SubmitExpiredBefore(Timepoint tp) {
     // time to execute callbacks
-    auto end = vault_.upper_bound(tp);
-    auto beg = vault_.begin();
-    while (beg++ != end) {
-        if (!SubmitToExecutor(std::move(beg->second))) {
+    auto right = vault_.upper_bound(tp);
+    auto left = vault_.begin();
+    while (left++ != right) {
+        if (!SubmitToExecutor(std::move(left->second))) {
             // TODO: queue is full: maybe throw
             break;
         }
     }
     // remove submitted callbacks
-    (void) vault_.erase(vault_.begin(), beg);
+    (void) vault_.erase(vault_.begin(), left);
 }
 
 bool Scheduler::SubmitToExecutor(Callback &&cb) {
