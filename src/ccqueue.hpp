@@ -21,15 +21,15 @@ public:
     using element = T;
     using container = std::array<element, kCapacity>;
  
-    CcQueue(bool sentinel = true) 
+    CcQueue() 
         : front_ { 0 }
         , back_ { 0 }
         , size_ { 0 }
-        , sentinel_ { sentinel }
+        , halt_ { true }
     {
         assert(front_ == back_);
     }
- 
+
     // return true if value was pushed successfully (queue is not full)
     // otherwise return false on failure and doesn't block
     [[nodiscard]] bool TryPush(element cmd) {
@@ -51,7 +51,7 @@ public:
     // Note: it ignores sentinel so you can't stop consumer thread
     [[nodiscard]] element Pop() {
         std::unique_lock<std::mutex> lock { mutex_ };
-        notifier_.wait(lock, [this]() {
+        notifier_.wait_for(lock, kMaxTimeout, [this]() {
             return !IsEmpty();
         });
         return PopFront();
@@ -64,9 +64,9 @@ public:
         std::optional<element> result{};
  
         std::unique_lock<std::mutex> lock { mutex_ };
-        notifier_.wait(lock, [this]() {
+        notifier_.wait_for(lock, kMaxTimeout, [this]() {
             // wait (block) while the <empty> queue has <sentinel>
-            return !IsEmpty() || !sentinel_.load(std::memory_order_relaxed);
+            return !IsEmpty() || !halt_.load(std::memory_order_acquire);
         });
         if (!IsEmpty()) {
             result.emplace(PopFront());
@@ -75,13 +75,13 @@ public:
         return result;
     }
  
-    void DisableSentinel() noexcept {
-        sentinel_.store(false, std::memory_order_relaxed);
+    void Halt() noexcept {
+        halt_.store(false, std::memory_order_release);
         notifier_.notify_all();
     }
 
-    void EnableSentinel() noexcept {
-        sentinel_.store(true, std::memory_order_relaxed);
+    void Run() noexcept {
+        halt_.store(true, std::memory_order_relaxed);
        // no need to notify as noone wait on it: notifier_.notify_all();
     }
  
@@ -109,12 +109,14 @@ private:
     [[nodiscard]] bool IsFull() const noexcept {
         return size_ == kCapacity;
     }
- 
+    
+    static constexpr std::chrono::milliseconds kMaxTimeout { 100 };
+
     std::mutex mutex_;
     std::condition_variable notifier_;
     container container_;
     std::size_t front_ { 0 };
     std::size_t back_ { 0 };
     std::size_t size_ { 0 };
-    std::atomic<bool> sentinel_;
+    std::atomic<bool> halt_;
 }; 
