@@ -23,6 +23,11 @@ void Scheduler::ScheduleAt(Timepoint tp, Callback &&cb) {
     vault_waiter_.notify_one();
 }
 
+std::size_t Scheduler::CallbackCount() const noexcept {
+    std::unique_lock lock{vault_mutex_};
+    return vault_.size();
+}
+
 void Scheduler::ScheduleAfter(Timeout delay, Callback &&cb) {
     ScheduleAt(Now() + delay, std::move(cb));
 }

@@ -31,6 +31,8 @@ public:
 
     void ScheduleAfter(Timeout delay, Callback &&cb);
 
+    std::size_t CallbackCount() const noexcept;
+
 private:
     /**
      * Background worker: track time for callbacks
