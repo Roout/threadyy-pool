@@ -17,6 +17,11 @@ using Timeout = std::chrono::milliseconds;
 using Timepoint = std::chrono::steady_clock::time_point;
 using Callback = std::move_only_function<void()>;
 
+class FullQueueException : public std::exception {
+public:
+    using std::exception::exception;
+};
+
 class Scheduler {
 public:
     
