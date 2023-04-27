@@ -66,13 +66,18 @@ void Scheduler::SubmitExpiredBefore(Timepoint tp) {
     // time to execute callbacks
     auto right = vault_.upper_bound(tp);
     auto left = vault_.begin();
-    while (left != right) {
-        if (!SubmitToExecutor(std::move(left->second))) {
-            // remove only submitted callbacks
-            (void) vault_.erase(vault_.begin(), left);
-            throw FullQueueException{"not enough space for callback"};
+    try {
+        while (left != right) {
+            if (!SubmitToExecutor(std::move(left->second))) {
+                // remove only submitted callbacks
+                (void) vault_.erase(vault_.begin(), left);
+                break;
+            }
+            left++;
         }
-        left++;
+    }
+    catch (...) {
+        // handle possible exception
     }
     // remove submitted callbacks
     (void) vault_.erase(vault_.begin(), left);
