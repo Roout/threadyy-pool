@@ -18,7 +18,7 @@ cmake --build . --target install --config Debug
 
 1. To address the issue of executing `Halt()` between evaluating `halt_` variable in this cv's predicate and cv going to sleep (see 2 #references) which leads to undesired block on `cv.wait` despite halting I use `wait_for` with timeout around `100ms`.  
 2. Use `notify_one` under the lock in `scheduler_test.cpp` to avoid data race against CV: it could be destroyed right after `exec_time` assignment when `notify_one` is being called, e.g. `exec_time.has_value()` already true. Mutex is unlocked (if `finished` is not under the lock). At the same time CV wakes up, checks stop predicate and doesn't wait anymore! Thread with CV can THERIOTICALLY be destroyed before/when `notify_one` in another thread being called. 
-To resolve this you can either increase lifetime of CV (shared_ptr, static, etc) or notify under locked `mutex`.
+To resolve this you can either increase lifetime of CV (shared_ptr, static, etc) or notify under locked `mutex`. See [pthread_cond_signal](#refs)
 
 ```C++
 // ...
@@ -35,7 +35,8 @@ std::unique_lock lock{ mutex };
 });
 ```
 
-# References
+# <a name="refs"></a>References
 
 1. [C++ compiler support](https://runebook.dev/en/docs/cpp/compiler_support#C.2B.2B23_library_features)
 2. [Multithreading by example: C++ dev blog](https://dev.to/glpuga/multithreading-by-example-the-stuff-they-didn-t-tell-you-4ed8)
+3. [pthread_cond_signal under lock](https://stackoverflow.com/questions/47308494/is-there-a-data-race-if-pthread-cond-signal-is-the-last-call-in-a-thread)
