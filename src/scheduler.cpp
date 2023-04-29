@@ -12,8 +12,7 @@ Scheduler::Scheduler(ThreadPool *executor)
 }
 
 void Scheduler::ScheduleAt(Timepoint tp, Callback &&cb) {
-    auto point = Now();
-    if (tp <= point) {
+    if (tp <= Now()) {
         SubmitToExecutor(std::move(cb));
         return;
     }
@@ -55,7 +54,7 @@ void Scheduler::TimerWorker(std::stop_token stop_token) {
             }
             // otherwise still need to sleep
         }
-        else { // no callback scheduled so wait until any callback will be scheduled
+        else { // no callback scheduled so wait
             (void) vault_waiter_.wait_for(lock, kSleepTimeout, need_wakeup);
             // just wake up due to either timeout either stop predicate
         }
@@ -69,8 +68,6 @@ void Scheduler::SubmitExpiredBefore(Timepoint tp) {
     try {
         while (left != right) {
             if (!SubmitToExecutor(std::move(left->second))) {
-                // remove only submitted callbacks
-                (void) vault_.erase(vault_.begin(), left);
                 break;
             }
             left++;
@@ -79,7 +76,7 @@ void Scheduler::SubmitExpiredBefore(Timepoint tp) {
     catch (...) {
         // handle possible exception
     }
-    // remove submitted callbacks
+    // remove only submitted callbacks
     (void) vault_.erase(vault_.begin(), left);
 }
 
