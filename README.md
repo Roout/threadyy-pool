@@ -14,10 +14,26 @@ Make thread pool
 cmake --build . --target install --config Debug
 ```
 
-## Dev notes
+## Notes
 
-To address the issue of executing `Halt()` between evaluating `halt_` variable in this cv's predicate and cv going to sleep (see 2 #references) which leads to undesired block on `cv.wait` despite halting I use `wait_for` with timeout around `100ms`.  
+1. To address the issue of executing `Halt()` between evaluating `halt_` variable in this cv's predicate and cv going to sleep (see 2 #references) which leads to undesired block on `cv.wait` despite halting I use `wait_for` with timeout around `100ms`.  
+2. Use `notify_one` under the lock in `scheduler_test.cpp` to avoid data race against CV: it could be destroyed right after `exec_time` assignment when `notify_one` is being called, e.g. `exec_time.has_value()` already true. Mutex is unlocked (if `finished` is not under the lock). At the same time CV wakes up, checks stop predicate and doesn't wait anymore! Thread with CV can THERIOTICALLY be destroyed before/when `notify_one` in another thread being called. 
+To resolve this you can either increase lifetime of CV (shared_ptr, static, etc) or notify under locked `mutex`.
 
+```C++
+// ...
+scheduler.ScheduleAt(expectedExecTime, [&]() {
+    // { with this scope uncommented data race will occure
+        std::lock_guard lock{ mutex };
+        exec_time.emplace(std::chrono::steady_clock::now());
+    // }
+    finished.notify_one();
+}); 
+std::unique_lock lock{ mutex };
+(void) finished.wait_for(lock, maxWaitTime * 2, [&]() {
+    return exec_time.has_value();
+});
+```
 
 # References
 

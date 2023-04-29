@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <ranges>
 
 TEST(scheduler, create_scheduler) {
     using namespace std::chrono_literals;
@@ -16,11 +17,12 @@ TEST(scheduler, create_scheduler) {
 
     pool.Start();
     std::atomic<int> counter{0};
-    scheduler.ScheduleAfter(10ms, [&counter]() { counter++; });
-    scheduler.ScheduleAt(std::chrono::steady_clock::now() + 15ms, [&counter]() { counter++; });
+    scheduler.ScheduleAfter(20ms, [&counter]() { counter++; });
+    scheduler.ScheduleAt(std::chrono::steady_clock::now() + 25ms, [&counter]() { counter++; });
 
+    ASSERT_EQ(counter, 0);
     ASSERT_EQ(scheduler.CallbackCount(), 2);
-    std::this_thread::sleep_for(15ms);
+    std::this_thread::sleep_for(55ms);
     ASSERT_EQ(counter, 2);
     ASSERT_EQ(scheduler.CallbackCount(), 0);
 }
@@ -94,25 +96,20 @@ TEST(scheduler, schedule_at_future_time) {
     pool.Start();
 
     std::optional<klyaksa::Timepoint> exec_time;
-
     std::mutex mutex;
     std::condition_variable finished;
-    const klyaksa::Timeout maxWaitTime = 100ms;
 
-    scheduler.ScheduleAt(std::chrono::steady_clock::now() + maxWaitTime
-        , [&]() {
-            {
-                std::lock_guard lock{mutex};
-                exec_time.emplace(std::chrono::steady_clock::now());
-            }
-            finished.notify_one();
-        });
-   
-    std::this_thread::sleep_for(maxWaitTime);
-    auto now = std::chrono::steady_clock::now();
-    klyaksa::Timeout error{ 20ms };
+    const klyaksa::Timeout maxWaitTime{ 100ms };
+    const klyaksa::Timeout error{ 20ms };
+    const auto expectedExecTime = std::chrono::steady_clock::now() + maxWaitTime;
 
-    std::unique_lock lock {mutex};
+    scheduler.ScheduleAt(expectedExecTime, [&]() {
+        std::lock_guard lock{ mutex };
+        exec_time.emplace(std::chrono::steady_clock::now());
+        finished.notify_one();
+    });
+    
+    std::unique_lock lock{ mutex };
     (void) finished.wait_for(lock, maxWaitTime * 2, [&]() {
         return exec_time.has_value();
     });
@@ -120,10 +117,10 @@ TEST(scheduler, schedule_at_future_time) {
 
     ASSERT_EQ(scheduler.CallbackCount(), 0) << "Haven't been executed yet";
 
-    const auto diff = std::chrono::duration_cast<klyaksa::Timeout>(*exec_time - now);
-    ASSERT_TRUE(TimeIsNear(*exec_time, now, error))
+    const auto diff = std::chrono::duration_cast<klyaksa::Timeout>(*exec_time - expectedExecTime);
+    ASSERT_TRUE(TimeIsNear(*exec_time, expectedExecTime, error))
         << "Executed at " << exec_time->time_since_epoch().count()
-        << " expected execution around " << now.time_since_epoch().count()
+        << " expected execution around " << expectedExecTime.time_since_epoch().count()
         << " so |exec_time -  now| <= error: |" << diff.count() << "| <= " << error.count();
 }
 
@@ -143,10 +140,8 @@ TEST(scheduler, correct_schedule_after_sequence) {
     for (size_t i = 0; i < kInsertElements; i++) {
         const auto timeout = i * 10ms;
         scheduler.ScheduleAfter(timeout, [&finished, &sequence, &sequece_quard, timeout]() {
-            {
-                std::lock_guard lock{sequece_quard};
-                sequence.push_back(timeout);
-            }
+            std::lock_guard lock{sequece_quard};
+            sequence.push_back(timeout);
             finished.notify_one();
         });
         maxWaitTime = timeout;
@@ -179,10 +174,8 @@ TEST(scheduler, correct_schedule_at_sequence) {
         const auto timeout = i * 10ms;
         scheduler.ScheduleAt(std::chrono::steady_clock::now() + timeout
             , [&finished, &sequence, &sequece_quard, timeout]() {
-                {
-                    std::lock_guard lock{sequece_quard};
-                    sequence.push_back(timeout);
-                }
+                std::lock_guard lock{sequece_quard};
+                sequence.push_back(timeout);
                 finished.notify_one();
             });
         maxWaitTime = timeout;
@@ -214,10 +207,8 @@ TEST(scheduler, correct_schedule_mix_sequence) {
     for (size_t i = 0; i < kInsertElements; i++) {
         const auto timeout = i * 5ms;
         auto cb = [&finished, &sequence, &sequece_quard, timeout]() {
-            {
-                std::lock_guard lock{sequece_quard};
-                sequence.push_back(timeout);
-            }
+            std::lock_guard lock{sequece_quard};
+            sequence.push_back(timeout);
             finished.notify_one();
         };
         if (i&1) {
