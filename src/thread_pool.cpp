@@ -13,7 +13,7 @@ ThreadPool::~ThreadPool() {
 }
 
 void ThreadPool::Start() {
-    pending_tasks_.Run();
+    pending_tasks_.Resume();
     for (std::size_t i = 0; i < worker_count_; i++) {
         auto worker = [this](std::stop_token stop) {
             while (!stop.stop_requested()) {

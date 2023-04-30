@@ -51,7 +51,7 @@ public:
     // Note: it ignores sentinel so you can't stop consumer thread
     [[nodiscard]] element Pop() {
         std::unique_lock<std::mutex> lock { mutex_ };
-        notifier_.wait_for(lock, kMaxTimeout, [this]() {
+        notifier_.wait(lock, [this]() {
             return !IsEmpty();
         });
         return PopFront();
@@ -64,9 +64,9 @@ public:
         std::optional<element> result{};
  
         std::unique_lock<std::mutex> lock { mutex_ };
-        notifier_.wait_for(lock, kMaxTimeout, [this]() {
+        notifier_.wait(lock, [this]() {
             // wait (block) while the <empty> queue has <sentinel>
-            return !IsEmpty() || !halt_.load(std::memory_order_acquire);
+            return !IsEmpty() || !halt_;
         });
         if (!IsEmpty()) {
             result.emplace(PopFront());
@@ -76,12 +76,16 @@ public:
     }
  
     void Halt() noexcept {
-        halt_.store(false, std::memory_order_release);
+        {
+            std::lock_guard lock{ mutex_ };
+            halt_ = false;
+        }
         notifier_.notify_all();
     }
 
-    void Run() noexcept {
-        halt_.store(true, std::memory_order_relaxed);
+    void Resume() noexcept {
+        std::lock_guard lock{ mutex_ };
+        halt_ = true;
        // no need to notify as noone wait on it: notifier_.notify_all();
     }
  
@@ -118,5 +122,5 @@ private:
     std::size_t front_ { 0 };
     std::size_t back_ { 0 };
     std::size_t size_ { 0 };
-    std::atomic<bool> halt_;
+    bool halt_;
 }; 
