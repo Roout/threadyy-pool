@@ -14,14 +14,13 @@
 
 namespace klyaksa {
 
-// TODO: add timer: execute after some time
-
 /// execution context
 class ThreadPool final {
 public:
     static constexpr std::size_t kTaskQueueSize { 255 };
 
     using Task = std::move_only_function<void()>;
+    using Queue = CcQueue<Task, kTaskQueueSize>;
 
     ThreadPool(std::size_t threads);
 
@@ -91,8 +90,6 @@ public:
         return stopped_.load(std::memory_order_acquire);
     }
 private:
-    using Queue = CcQueue<Task, kTaskQueueSize>;
-
     const std::size_t worker_count_ { 0 };
     std::atomic<bool> stopped_ { true };
     // number of tasks currently running

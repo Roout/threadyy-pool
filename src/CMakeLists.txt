@@ -4,12 +4,14 @@ list(APPEND headers
     "ccqueue.hpp"
     "thread_pool.hpp"
     "scheduler.hpp"
+    "timed_thread_pool.hpp"
 )
     
 list(APPEND sources
     "main.cpp"
     "thread_pool.cpp"
     "scheduler.cpp"
+    "timed_thread_pool.cpp"
 )
 
 add_executable(${This} ${sources} ${headers})
