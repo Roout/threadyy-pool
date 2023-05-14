@@ -7,7 +7,6 @@ namespace klyaksa {
 
 class TimedThreadPool {
 public:
-    using Task = ThreadPool::Task;
     using Queue = ThreadPool::Queue;
 
     TimedThreadPool(size_t threads);
@@ -40,6 +39,24 @@ public:
     
     void Post(Task&& task, Timepoint when) {
         scheduler_.ScheduleAt(when, std::move(task));
+    }
+
+    template<class Func, class ...Args, class R = std::invoke_result_t<Func, Args...>>
+        requires is_not_task<Func>
+    [[nodiscard]] auto Post(Timeout delay, Func &&f, Args&&... args) {
+        auto task = Task{std::forward<Func>(f), std::forward<Args>(args)...};
+        auto fut = task.GetFuture<R>();
+        Post(std::move(task), delay);
+        return fut;
+    }
+
+    template<class Func, class ...Args, class R = std::invoke_result_t<Func, Args...>>
+        requires is_not_task<Func>
+    [[nodiscard]] auto Post(Timepoint when, Func &&f, Args&&... args) {
+        auto task = Task{std::forward<Func>(f), std::forward<Args>(args)...};
+        auto fut = task.GetFuture<R>();
+        Post(std::move(task), when);
+        return fut;
     }
 
     size_t Size() const noexcept {

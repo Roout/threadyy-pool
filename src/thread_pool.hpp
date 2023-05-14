@@ -11,6 +11,7 @@
 #include <functional>
 
 #include "ccqueue.hpp"
+#include "task.hpp"
 
 namespace klyaksa {
 
@@ -19,7 +20,6 @@ class ThreadPool final {
 public:
     static constexpr std::size_t kTaskQueueSize { 255 };
 
-    using Task = std::move_only_function<void()>;
     using Queue = CcQueue<Task, kTaskQueueSize>;
 
     ThreadPool(std::size_t threads);
@@ -32,35 +32,16 @@ public:
 
     ~ThreadPool();
     
-    template<class Func, class ...Args>
-    [[nodiscard]] static auto MakeTask(Func &&f, Args&&... args) {
-        using R = std::invoke_result_t<Func&&, Args&&...>;
-
-        std::packaged_task<R()> task { [func = std::forward<Func>(f)
-            , ...params = std::forward<Args>(args)]() mutable
-        {
-            if constexpr (std::is_same_v<R, void>) {
-                std::invoke(std::forward<Func>(func), std::forward<Args>(params)...);
-            }
-            else {
-                return std::invoke(std::forward<Func>(func), std::forward<Args>(params)...);
-            }    
-        }}; 
-        return task;
-    }
-
     /**
      * Post function for execution
      * @return nullopt of failure to add task to queue
      * otherwise return optional future
     */
-    template<class Func, class ...Args>
-        requires std::is_invocable_v<Func, Args...>
-    [[nodiscard]] auto Post(Func &&f, Args&&... args)
-        -> std::optional<std::future<std::invoke_result_t<Func&&, Args&&...>>>
-    {
-        auto task = MakeTask(std::forward<Func>(f), std::forward<Args>(args)...);
-        auto fut = task.get_future();
+    template<class Func, class ...Args, class R = std::invoke_result_t<Func, Args...>>
+        requires is_not_task<Func>
+    [[nodiscard]] std::optional<std::future<R>> Post(Func &&f, Args&&... args) {
+        auto task = Task{std::forward<Func>(f), std::forward<Args>(args)...};
+        auto fut = task.GetFuture<R>();
         if (!pending_tasks_.TryPush(std::move(task))) {
             return std::nullopt;
         }

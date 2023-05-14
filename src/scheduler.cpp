@@ -11,7 +11,7 @@ Scheduler::Scheduler(ThreadPool *executor)
 {
 }
 
-void Scheduler::ScheduleAt(Timepoint tp, Callback &&cb) {
+void Scheduler::ScheduleAt(Timepoint tp, Task &&cb) {
     if (tp <= Now()) {
         SubmitToExecutor(std::move(cb));
         return;
@@ -27,7 +27,7 @@ std::size_t Scheduler::CallbackCount() const noexcept {
     return vault_.size();
 }
 
-void Scheduler::ScheduleAfter(Timeout delay, Callback &&cb) {
+void Scheduler::ScheduleAfter(Timeout delay, Task &&cb) {
     ScheduleAt(Now() + delay, std::move(cb));
 }
 
@@ -68,6 +68,9 @@ void Scheduler::SubmitExpiredBefore(Timepoint tp) {
     try {
         while (left != right) {
             if (!SubmitToExecutor(std::move(left->second))) {
+                // TODO: handle this cases:
+                // - [ ] queue is full
+                // - [ ] excecutor is stopped
                 break;
             }
             left++;
@@ -80,9 +83,11 @@ void Scheduler::SubmitExpiredBefore(Timepoint tp) {
     (void) vault_.erase(vault_.begin(), left);
 }
 
-bool Scheduler::SubmitToExecutor(Callback &&cb) {
+bool Scheduler::SubmitToExecutor(Task &&cb) {
     assert(executor_);
-    assert(!executor_->IsStopped());
+    if (executor_->IsStopped()) {
+        return false;
+    }
     return executor_->Post(std::move(cb));
 }
 

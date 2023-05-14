@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 3.20.0)
 
 list(APPEND headers
     "ccqueue.hpp"
+    "task.hpp"
     "thread_pool.hpp"
     "scheduler.hpp"
     "timed_thread_pool.hpp"
