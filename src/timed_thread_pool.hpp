@@ -41,8 +41,17 @@ public:
         scheduler_.ScheduleAt(when, std::move(task));
     }
 
-    template<class Func, class ...Args, class R = std::invoke_result_t<Func, Args...>>
-        requires is_not_task<Func>
+    template<traits::Bindable Func>
+    [[nodiscard]] auto Post(Timeout delay, Func &&f) {
+        using R = std::invoke_result_t<Func>;
+        Task task{ std::forward<Func>(f) };
+        auto fut = task.GetFuture<R>();
+        Post(std::move(task), delay);
+        return fut;
+    }
+
+    template<traits::Bindable Func, traits::Bindable ...Args, class R = std::invoke_result_t<Func, Args...>>
+        requires traits::Taskable<Func, Args...>
     [[nodiscard]] auto Post(Timeout delay, Func &&f, Args&&... args) {
         auto task = Task{std::forward<Func>(f), std::forward<Args>(args)...};
         auto fut = task.GetFuture<R>();
@@ -50,8 +59,17 @@ public:
         return fut;
     }
 
-    template<class Func, class ...Args, class R = std::invoke_result_t<Func, Args...>>
-        requires is_not_task<Func>
+    template<traits::Bindable Func>
+    [[nodiscard]] auto Post(Timepoint when, Func &&f) {
+        using R = std::invoke_result_t<Func>;
+        Task task{ std::forward<Func>(f) };
+        auto fut = task.GetFuture<R>();
+        Post(std::move(task), when);
+        return fut;
+    }
+
+    template<traits::Bindable Func, traits::Bindable ...Args, class R = std::invoke_result_t<Func, Args...>>
+        requires traits::Taskable<Func, Args...>
     [[nodiscard]] auto Post(Timepoint when, Func &&f, Args&&... args) {
         auto task = Task{std::forward<Func>(f), std::forward<Args>(args)...};
         auto fut = task.GetFuture<R>();

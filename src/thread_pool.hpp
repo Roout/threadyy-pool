@@ -37,10 +37,20 @@ public:
      * @return nullopt of failure to add task to queue
      * otherwise return optional future
     */
-    template<class Func, class ...Args, class R = std::invoke_result_t<Func, Args...>>
-        requires is_not_task<Func>
+    template<traits::Bindable Func, traits::Bindable ...Args, class R = std::invoke_result_t<Func, Args...>>
+        requires traits::Taskable<Func, Args...>
     [[nodiscard]] std::optional<std::future<R>> Post(Func &&f, Args&&... args) {
-        auto task = Task{std::forward<Func>(f), std::forward<Args>(args)...};
+        Task task{std::forward<Func>(f), std::forward<Args>(args)...};
+        auto fut = task.GetFuture<R>();
+        if (!pending_tasks_.TryPush(std::move(task))) {
+            return std::nullopt;
+        }
+        return std::make_optional(std::move(fut));
+    }
+    
+    template<traits::Bindable Func, class R = std::invoke_result_t<Func>>
+    [[nodiscard]] std::optional<std::future<R>> Post(Func &&f) {
+        Task task{std::forward<Func>(f)};
         auto fut = task.GetFuture<R>();
         if (!pending_tasks_.TryPush(std::move(task))) {
             return std::nullopt;
