@@ -7,7 +7,7 @@ int main() {
     klyaksa::ThreadPool pool {kWorkers};
     std::atomic<int> counter;
     std::atomic<bool> stopped { false };
-    auto console = pool.Post([&](){
+    auto console = Post(pool, [&](){
         int iters = 0;
         while (!stopped.load(std::memory_order_acquire)) {
             std::cout << "* ";
@@ -17,7 +17,7 @@ int main() {
         return iters;
     }).value();
     for (size_t i = 0; i < 10; i++) {
-        (void) pool.Post([&](){ counter++; });
+        (void) Post(pool, [&](){ counter++; });
     }
     pool.Start();
     std::this_thread::sleep_for(std::chrono::seconds{2});

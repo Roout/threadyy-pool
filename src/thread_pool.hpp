@@ -16,7 +16,7 @@
 namespace klyaksa {
 
 /// execution context
-class ThreadPool final {
+class ThreadPool {
 public:
     static constexpr std::size_t kTaskQueueSize { 255 };
 
@@ -30,34 +30,8 @@ public:
     ThreadPool& operator=(ThreadPool&&) = delete;
     ThreadPool(ThreadPool&&) = delete;
 
-    ~ThreadPool();
+    virtual ~ThreadPool();
     
-    /**
-     * Post function for execution
-     * @return nullopt of failure to add task to queue
-     * otherwise return optional future
-    */
-    template<traits::Bindable Func, traits::Bindable ...Args, class R = std::invoke_result_t<Func, Args...>>
-        requires traits::Taskable<Func, Args...>
-    [[nodiscard]] std::optional<std::future<R>> Post(Func &&f, Args&&... args) {
-        Task task{std::forward<Func>(f), std::forward<Args>(args)...};
-        auto fut = task.GetFuture<R>();
-        if (!pending_tasks_.TryPush(std::move(task))) {
-            return std::nullopt;
-        }
-        return std::make_optional(std::move(fut));
-    }
-    
-    template<traits::Bindable Func, class R = std::invoke_result_t<Func>>
-    [[nodiscard]] std::optional<std::future<R>> Post(Func &&f) {
-        Task task{std::forward<Func>(f)};
-        auto fut = task.GetFuture<R>();
-        if (!pending_tasks_.TryPush(std::move(task))) {
-            return std::nullopt;
-        }
-        return std::make_optional(std::move(fut));
-    }
-
     /**
      * Post already ready task
      * @return true if task was successfully added 
@@ -68,8 +42,9 @@ public:
         return pending_tasks_.TryPush(std::move(task));
     }
 
-    void Start();
-    void Stop();
+    virtual void Start();
+
+    virtual void Stop();
 
     std::size_t Size() const noexcept {
         return worker_count_;
@@ -88,5 +63,31 @@ private:
     Queue pending_tasks_;
     std::vector<std::jthread> workers_;
 };
+
+/**
+ * Post function for execution
+ * @return nullopt of failure to add task to queue
+ * otherwise return optional future
+*/
+template<traits::Bindable Func, traits::Bindable ...Args, class R = std::invoke_result_t<Func, Args...>>
+    requires traits::Taskable<Func, Args...>
+[[nodiscard]] std::optional<std::future<R>> Post(ThreadPool& executor, Func &&f, Args&&... args) {
+    Task task{std::forward<Func>(f), std::forward<Args>(args)...};
+    auto fut = task.GetFuture<R>();
+    if (!executor.Post(std::move(task))) {
+        return std::nullopt;
+    }
+    return std::make_optional(std::move(fut));
+}
+
+template<traits::Bindable Func, class R = std::invoke_result_t<Func>>
+[[nodiscard]] std::optional<std::future<R>> Post(ThreadPool& executor, Func &&f) {
+    Task task{std::forward<Func>(f)};
+    auto fut = task.GetFuture<R>();
+    if (!executor.Post(std::move(task))) {
+        return std::nullopt;
+    }
+    return std::make_optional(std::move(fut));
+}
 
 } // namespace klyaksa

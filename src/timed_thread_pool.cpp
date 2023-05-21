@@ -3,16 +3,17 @@
 namespace klyaksa {
 
 TimedThreadPool::TimedThreadPool(size_t threads)
-    : pool_ { threads }
-    , scheduler_ { &pool_ }
+    : ThreadPool { threads }
+    , scheduler_ { this }
 {}
 
 void TimedThreadPool::Start() {
-    pool_.Start();
+    ThreadPool::Start();
 }
 
 void TimedThreadPool::Stop() {
-    pool_.Stop();
+    scheduler_.Stop();
+    ThreadPool::Stop();
 }
 
 } // namespace klyaksa

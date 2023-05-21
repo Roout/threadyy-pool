@@ -19,7 +19,7 @@ TEST(thread_pool, executor_lifetime_cycle) {
     ASSERT_EQ(executor.Size(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 
-    auto result = executor.Post([] {
+    auto result = Post(executor, [] {
         // small delay for asserts
         std::this_thread::sleep_for(200ms);
     });
@@ -45,14 +45,15 @@ TEST(thread_pool, post_lambdas) {
     klyaksa::ThreadPool executor{kWorkers};
     executor.Start();
     std::atomic<int> count{0};
-    auto results = { executor.Post([] { std::this_thread::sleep_for(5ms);})
-        , executor.Post([&count] { count++; std::this_thread::sleep_for(5ms);})
-        , executor.Post([&count](int x) { count += x; std::this_thread::sleep_for(5ms);}, 1)
-        , executor.Post([&count](int x) noexcept { count += x; std::this_thread::sleep_for(5ms);}, 1)
-        , executor.Post([&count](int x, int y) { count += x + y; std::this_thread::sleep_for(5ms);}, 1, 2)
-        , executor.Post([&count](int x, int y) mutable { count += x + y; std::this_thread::sleep_for(5ms);}, 1, 2)
+    auto results = { 
+          Post(executor, [] { std::this_thread::sleep_for(5ms);})
+        , Post(executor, [&count] { count++; std::this_thread::sleep_for(5ms);})
+        , Post(executor, [&count](int x) { count += x; std::this_thread::sleep_for(5ms);}, 1)
+        , Post(executor, [&count](int x) noexcept { count += x; std::this_thread::sleep_for(5ms);}, 1)
+        , Post(executor, [&count](int x, int y) { count += x + y; std::this_thread::sleep_for(5ms);}, 1, 2)
+        , Post(executor, [&count](int x, int y) mutable { count += x + y; std::this_thread::sleep_for(5ms);}, 1, 2)
     };
-    auto res = executor.Post([&count] { count++; std::this_thread::sleep_for(5ms); return count.load(); });
+    auto res = Post(executor, [&count] { count++; std::this_thread::sleep_for(5ms); return count.load(); });
     std::this_thread::sleep_for(50ms);
     executor.Stop();
 }
@@ -73,17 +74,17 @@ TEST(thread_pool, post_raw_functions) {
     executor.Start();
     std::atomic<int> inc { 0 };
     int noChange { 0 };
-    (void) executor.Post(EmptyTest);
-    (void) executor.Post(&EmptyTest);
-    (void) executor.Post(WithParam, std::ref(inc));
-    (void) executor.Post(&WithParam, std::ref(inc));
-    (void) executor.Post(WithReturn, noChange);
-    (void) executor.Post(&WithConstParam, std::cref(noChange));
-    (void) executor.Post(WithConstParam, std::cref(noChange));
-    (void) executor.Post(&WithRvalueParam, 1);
-    (void) executor.Post(WithRvalueParam, 2);
+    (void) Post(executor, EmptyTest);
+    (void) Post(executor, &EmptyTest);
+    (void) Post(executor, WithParam, std::ref(inc));
+    (void) Post(executor, &WithParam, std::ref(inc));
+    (void) Post(executor, WithReturn, noChange);
+    (void) Post(executor, &WithConstParam, std::cref(noChange));
+    (void) Post(executor, WithConstParam, std::cref(noChange));
+    (void) Post(executor, &WithRvalueParam, 1);
+    (void) Post(executor, WithRvalueParam, 2);
     
-    auto optFuture = executor.Post(&WithReturn, noChange);
+    auto optFuture = Post(executor, &WithReturn, noChange);
     std::this_thread::sleep_for(50ms);
     EXPECT_TRUE(optFuture);
     EXPECT_EQ(optFuture->get(), 1);
@@ -97,7 +98,7 @@ TEST(thread_pool, task_throw_exception) {
 
     klyaksa::ThreadPool executor{kWorkers};
     executor.Start();
-    auto fut = executor.Post([]() {
+    auto fut = Post(executor, []() {
         throw std::runtime_error("test error");
     });
     fut->wait();
@@ -132,13 +133,13 @@ TEST(thread_pool, post_functor) {
     executor.Start();
     int x = 0; 
     // as rvalue
-    (void) executor.Post(Empty{});
-    (void) executor.Post(EmptyConst{});
-    (void) executor.Post(WithParam{}, x);
-    (void) executor.Post(WithCapture{1});
-    (void) executor.Post(WithReturn{1});
-    (void) executor.Post(std::function<void()>{[x]{}});
-    (void) executor.Post(std::move_only_function<void()>{[x]{}});
+    (void) Post(executor, Empty{});
+    (void) Post(executor, EmptyConst{});
+    (void) Post(executor, WithParam{}, x);
+    (void) Post(executor, WithCapture{1});
+    (void) Post(executor, WithReturn{1});
+    (void) Post(executor, std::function<void()>{[x]{}});
+    (void) Post(executor, std::move_only_function<void()>{[x]{}});
     
     // as lvalue
     Empty empty{};
@@ -148,13 +149,13 @@ TEST(thread_pool, post_functor) {
     WithReturn withReturn{1};
     std::function<void()> func{[x]{}};
     std::move_only_function<void()> moveFunc{[x]{}};
-    (void) executor.Post(empty);
-    (void) executor.Post(emptyConst);
-    (void) executor.Post(withParams, x);
-    (void) executor.Post(withCapture);
-    (void) executor.Post(withReturn);
-    (void) executor.Post(func);
-    (void) executor.Post(std::move(moveFunc));
+    (void) Post(executor, empty);
+    (void) Post(executor, emptyConst);
+    (void) Post(executor, withParams, x);
+    (void) Post(executor, withCapture);
+    (void) Post(executor, withReturn);
+    (void) Post(executor, func);
+    (void) Post(executor, std::move(moveFunc));
     std::this_thread::sleep_for(50ms);
     executor.Stop();
 }
@@ -169,7 +170,7 @@ TEST(thread_pool, access_future_from_post_result) {
     static constexpr auto kReturnValue{32};
 
     executor.Start();
-    auto fut = executor.Post([] {
+    auto fut = Post(executor, [] {
         std::this_thread::sleep_for(200ms);
         return kReturnValue;
     });
@@ -266,7 +267,7 @@ TEST(thread_pool, access_future_after_executor_destruction) {
         {
             klyaksa::ThreadPool executor{kWorkers};
             executor.Start();
-            fut = *executor.Post([] {
+            fut = *Post(executor, [] {
                 std::this_thread::sleep_for(20ms);
                 return kReturnValue;
             });
