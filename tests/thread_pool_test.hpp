@@ -92,7 +92,17 @@ TEST(thread_pool, post_raw_functions) {
 }
 
 TEST(thread_pool, task_throw_exception) {
+    using namespace std::chrono_literals;
+    static constexpr std::size_t kWorkers{5};
 
+    klyaksa::ThreadPool executor{kWorkers};
+    executor.Start();
+    auto fut = executor.Post([]() {
+        throw std::runtime_error("test error");
+    });
+    fut->wait();
+    EXPECT_THROW(fut->get(), std::runtime_error);
+    executor.Stop();
 }
 
 TEST(thread_pool, post_functor) {
