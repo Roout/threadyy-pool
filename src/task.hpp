@@ -30,6 +30,29 @@ public:
     template<traits::Bindable Func>
     Task(Func &&f) {
         using R = std::invoke_result_t<Func>;
+#ifdef _MSC_VER
+        std::promise<R> promise;
+        auto fut = promise.get_future();
+        auto wrapper = [state = std::move(promise)
+            , func = std::forward<Func>(f)]() mutable 
+        {
+            try {
+                if constexpr (std::is_same_v<R, void>) {
+                    std::invoke(func);
+                    state.set_value();
+                }
+                else {
+                    state.set_value(std::invoke(func));
+                }
+            }
+            catch (...) {
+                // note, set_exception() may throw too
+                state.set_exception(std::current_exception());
+            }
+        };
+        erased_future_.reset(new FutureKeeper<R>(std::move(fut)));
+        task_ = std::move(wrapper);
+#else
         std::packaged_task<R()> task {[func = std::forward<Func>(f)]() mutable {
             if constexpr (std::is_same_v<R, void>) {
                 std::invoke(func);
@@ -40,12 +63,37 @@ public:
         }};
         erased_future_.reset(new FutureKeeper<R>(task.get_future()));
         task_ = std::move(task);
+#endif // _MSC_VER
     }
 
     template<traits::Bindable Func, traits::Bindable ...Args>
         requires traits::Taskable<Func, Args...>
     Task(Func &&f, Args&&... args) {
         using R = std::invoke_result_t<Func, Args...>;
+#ifdef _MSC_VER
+        std::promise<R> promise;
+        auto fut = promise.get_future();
+        auto wrapper = [state = std::move(promise)
+            , func = std::forward<Func>(f)
+            , ...params = std::forward<Args>(args)]() mutable
+        {
+            try {
+                if constexpr (std::is_same_v<R, void>) {
+                    std::invoke(func, std::unwrap_reference_t<Args>(params)...);
+                    state.set_value();
+                }
+                else {
+                    state.set_value(std::invoke(func, std::unwrap_reference_t<Args>(params)...));
+                }
+            }
+            catch (...) {
+                // note, set_exception() may throw too
+                state.set_exception(std::current_exception());
+            }
+        };
+        task_ = std::move(wrapper);
+        erased_future_.reset(new FutureKeeper<R>(std::move(fut)));
+#else
         std::packaged_task<R()> task {[func = std::forward<Func>(f)
             , ...params = std::forward<Args>(args)]() mutable
         {
@@ -58,6 +106,7 @@ public:
         }};
         erased_future_.reset(new FutureKeeper<R>(task.get_future()));
         task_ = std::move(task);
+#endif // _MSC_VER
     }
     
     void operator()() {
