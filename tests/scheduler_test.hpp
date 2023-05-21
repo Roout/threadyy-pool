@@ -29,6 +29,27 @@ TEST(scheduler, create_scheduler) {
     ASSERT_EQ(scheduler.CallbackCount(), 0);
 }
 
+TEST(scheduler, stop_scheduler) {
+    using namespace std::chrono_literals;
+
+    klyaksa::ThreadPool pool{5};
+    klyaksa::Scheduler scheduler{&pool};
+    pool.Start();
+    std::atomic<int> counter{0};
+
+    static constexpr size_t kTestCount {50};
+    for (size_t i = 0; i < kTestCount; i++) {
+        scheduler.Start();
+        scheduler.ScheduleAfter(5ms, [&counter]() { counter++; });
+        std::this_thread::sleep_for(5ms);
+        scheduler.Stop();
+    }
+    std::this_thread::sleep_for(55ms);
+    pool.Stop();
+    ASSERT_EQ(counter, kTestCount);
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
+}
+
 namespace {
     bool TimeIsNear(klyaksa::Timepoint lhs, klyaksa::Timepoint rhs, klyaksa::Timeout error) noexcept {
         auto diff = std::chrono::duration_cast<klyaksa::Timeout>(lhs - rhs);
