@@ -31,6 +31,14 @@ void Scheduler::ScheduleAfter(Timeout delay, Task &&cb) {
     ScheduleAt(Now() + delay, std::move(cb));
 }
 
+void Scheduler::Stop() noexcept {
+    if (timer_.request_stop()) {
+        vault_waiter_.notify_one();
+    }
+    // otherwise assumed that it has already been stopped
+    // or in proccess of stopping
+}
+
 void Scheduler::TimerWorker(std::stop_token stop_token) {
     static constexpr Timeout kSleepTimeout { 100 };
     auto need_wakeup = [this, stop_token]() noexcept {
@@ -48,7 +56,9 @@ void Scheduler::TimerWorker(std::stop_token stop_token) {
             }
             next_wakeup = std::min(next_wakeup, now + kSleepTimeout);
             bool wakeup_result = vault_waiter_.wait_until(lock, next_wakeup, need_wakeup);
-            if (wakeup_result && !vault_.empty()) {
+            if (wakeup_result && !stop_token.stop_requested()) {
+                assert(!vault_.empty() && "Cannot be empty otherwise "
+                    "it meens CV woke up due to stop request. See predicate.");
                 // cv predecate return true; don't submit if stopped
                 SubmitExpiredBefore(Now());
             }

@@ -34,6 +34,15 @@ public:
 
     std::size_t CallbackCount() const noexcept;
 
+    /**
+     * Stop scheduler (background thread-worker).
+     * Before stopping it may submit some expired tasks for execution
+     * or be in the middle of submitting.
+     * 
+     * Note, the executor is not stopped only scheduler
+    */
+    void Stop() noexcept;
+
 private:
     /**
      * Background worker: track time for callbacks
@@ -58,6 +67,7 @@ private:
     ThreadPool *executor_;
 
     mutable std::mutex vault_mutex_;
+    // TODO: switch to `std::condition_variable_any` which can use `std::stop_token`
     std::condition_variable vault_waiter_;
     std::multimap<Timepoint, Task> vault_;
     std::jthread timer_;
