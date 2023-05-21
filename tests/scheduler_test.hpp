@@ -13,9 +13,11 @@ TEST(scheduler, create_scheduler) {
 
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
+    scheduler.Start();
     pool.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
+    
     std::atomic<int> counter{0};
     scheduler.ScheduleAfter(20ms, [&counter]() { counter++; });
     scheduler.ScheduleAt(std::chrono::steady_clock::now() + 25ms, [&counter]() { counter++; });
@@ -39,9 +41,10 @@ TEST(scheduler, schedule_at_expired_time) {
 
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
+    scheduler.Start();
     pool.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
     klyaksa::Timepoint exec_time;
     scheduler.ScheduleAt(std::chrono::steady_clock::now() - 100ms, [&exec_time]() {
@@ -64,9 +67,10 @@ TEST(scheduler, schedule_at_current_time) {
 
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
+    scheduler.Start();
     pool.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
     klyaksa::Timepoint exec_time;
     scheduler.ScheduleAt(std::chrono::steady_clock::now(), [&exec_time]() {
@@ -91,9 +95,10 @@ TEST(scheduler, schedule_at_future_time) {
 
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
+    scheduler.Start();
     pool.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
 
     std::optional<klyaksa::Timepoint> exec_time;
     std::mutex mutex;
@@ -128,8 +133,9 @@ TEST(scheduler, correct_schedule_after_sequence) {
     using namespace std::chrono_literals;
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
+    scheduler.Start();
     pool.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
     
     static constexpr size_t kInsertElements { 10 };
     std::vector<klyaksa::Timeout> sequence;
@@ -161,8 +167,9 @@ TEST(scheduler, correct_schedule_at_sequence) {
     using namespace std::chrono_literals;
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
     pool.Start();
+    scheduler.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
     
     static constexpr size_t kInsertElements { 10 };
     std::vector<klyaksa::Timeout> sequence;
@@ -195,8 +202,9 @@ TEST(scheduler, correct_schedule_mix_sequence) {
     using namespace std::chrono_literals;
     klyaksa::ThreadPool pool{5};
     klyaksa::Scheduler scheduler{&pool};
-    ASSERT_EQ(scheduler.CallbackCount(), 0);
     pool.Start();
+    scheduler.Start();
+    ASSERT_EQ(scheduler.CallbackCount(), 0);
     
     static constexpr size_t kInsertElements { 10 };
     std::vector<klyaksa::Timeout> sequence;

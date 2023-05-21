@@ -7,9 +7,8 @@ namespace klyaksa {
 
 Scheduler::Scheduler(ThreadPool *executor)
     : executor_ { executor }
-    , timer_ {[this](std::stop_token token) { TimerWorker(token); } }
-{
-}
+    , timer_ {} // default constructible
+{}
 
 void Scheduler::ScheduleAt(Timepoint tp, Task &&cb) {
     if (tp <= Now()) {
@@ -31,12 +30,19 @@ void Scheduler::ScheduleAfter(Timeout delay, Task &&cb) {
     ScheduleAt(Now() + delay, std::move(cb));
 }
 
-void Scheduler::Stop() noexcept {
-    if (timer_.request_stop()) {
-        vault_waiter_.notify_one();
+void Scheduler::Stop() {
+    if (timer_.joinable()) {
+        if (timer_.request_stop()) {
+            vault_waiter_.notify_one();
+        }
+        timer_.join();
     }
-    // otherwise assumed that it has already been stopped
-    // or in proccess of stopping
+    // otherwise assumed that it was default constructible
+}
+
+void Scheduler::Start() {
+    assert(!timer_.joinable());
+    timer_ = std::jthread{[this](std::stop_token token) { TimerWorker(token); }};
 }
 
 void Scheduler::TimerWorker(std::stop_token stop_token) {

@@ -39,9 +39,17 @@ public:
      * Before stopping it may submit some expired tasks for execution
      * or be in the middle of submitting.
      * 
+     * Blocks execution thread waiting for thread to join.
+     * UB if called concurrently
+     * 
      * Note, the executor is not stopped only scheduler
     */
-    void Stop() noexcept;
+    void Stop();
+
+    /**
+     * Start scheduler's worker background thread.
+     */
+    void Start();
 
 private:
     /**

@@ -23,6 +23,7 @@ public:
 
 private:
     Scheduler scheduler_;
+    std::atomic<bool> stopped_;
 };
 
 template<traits::Bindable Func>
