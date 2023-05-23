@@ -16,14 +16,14 @@ cmake --build . --target install --config Debug
 
 ## Notes
 
-1. To address the issue of executing `Halt()` between evaluating `halt_` variable in this cv's predicate and cv going to sleep ([see 2](#refs)) which leads to undesired block on `cv.wait` despite halting I use `wait_for` with timeout around `100ms`. **UPD**: switched back to mutex for queue cuz we're locking mutex when pushing callback anyway! and `wait_for` need to spin in loop to check whether it's timeout occured or new work appearedW!
+1. To address the issue of executing `Halt()` between evaluating `halt_` variable in this cv's predicate and cv going to sleep ([see 2](#refs)) which leads to undesired block on `cv.wait` despite halting I use `wait_for` with timeout around `100ms`. **UPDATE**: switched back to mutex for queue because we're locking mutex when pushing callback anyway so using atomic variable won't give any speedup: I feel like approach with `wait_for` which will have to spin in the loop to check whether it's timeout occured or new work appeared cost more CPU cycles then locking mutex!
 2. Use `notify_one` under the lock in `scheduler_test.cpp` to avoid data race against CV: it could be destroyed right after `exec_time` assignment when `notify_one` is being called, e.g. `exec_time.has_value()` already true. Mutex is unlocked (if `finished` is not under the lock). At the same time CV wakes up, checks stop predicate and doesn't wait anymore! Thread with CV can THERIOTICALLY be destroyed before/when `notify_one` in another thread being called. 
 To resolve this you can either increase lifetime of CV (shared_ptr, static, etc) or notify under locked `mutex`. See [pthread_cond_signal](#refs)
 3. For passing references I decide to pass args using `std::ref/std::cref` wrappers. Instead of using `std::tuple` I prefer `std::ref`. See [Perfect forwaring and capture](#refs)
 4. For MSVC compiler: you cannot `Post` move-only callable due to bug: they afrad to break ABI. I use `std::promise - std::future` pair to emultate `std::packaged_task` behaviour: get future and set exception on need. I probably need replace `std::packaged_task` too and leave only workaround for MSVC but I don't want for now... Just leave it to the future ME. For bug issue see [MSVC (5)](#refs).
 
 ```C++
-// ...
+// Notes#2 ...
 scheduler.ScheduleAt(expectedExecTime, [&]() {
     // { with this scope uncommented data race will occur
         std::lock_guard lock{ mutex };
