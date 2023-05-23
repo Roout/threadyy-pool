@@ -10,13 +10,13 @@ TEST(thread_pool, executor_lifetime_cycle) {
     klyaksa::ThreadPool executor{kWorkers};
 
     ASSERT_TRUE(executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 
     executor.Start();
     
     ASSERT_TRUE(!executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 
     auto result = Post(executor, [] {
@@ -28,13 +28,13 @@ TEST(thread_pool, executor_lifetime_cycle) {
 
     ASSERT_TRUE(result) << "failed to post task";
     ASSERT_TRUE(!executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 1);
 
     executor.Stop();
 
     ASSERT_TRUE(executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 }
 
@@ -179,7 +179,7 @@ TEST(thread_pool, access_future_from_post_result) {
     std::this_thread::sleep_for(100ms);
 
     ASSERT_TRUE(!executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 1);
 
     ASSERT_TRUE(fut.has_value());
@@ -188,7 +188,7 @@ TEST(thread_pool, access_future_from_post_result) {
     executor.Stop();
 
     ASSERT_TRUE(executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 }
 
@@ -197,20 +197,20 @@ TEST(thread_pool, start_after_stop) {
     klyaksa::ThreadPool executor{kWorkers};
 
     ASSERT_TRUE(executor.IsStopped());
-    ASSERT_EQ(executor.Size(), kWorkers);
+    ASSERT_EQ(executor.WorkerCount(), kWorkers);
     ASSERT_EQ(executor.GetActiveTasks(), 0);
 
     for (std::size_t i = 0; i < 100; i++) {
         executor.Start();
         
         ASSERT_TRUE(!executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
 
         executor.Stop();
 
         ASSERT_TRUE(executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
     }
 }
@@ -221,19 +221,19 @@ TEST(thread_pool, dtor_after_stop) {
         klyaksa::ThreadPool executor{kWorkers};
 
         ASSERT_TRUE(executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
 
         executor.Start();
         
         ASSERT_TRUE(!executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
 
         executor.Stop();
 
         ASSERT_TRUE(executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
     }
 }
@@ -245,13 +245,13 @@ TEST(thread_pool, dtor_after_start) {
         klyaksa::ThreadPool executor{kWorkers};
 
         ASSERT_TRUE(executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
 
         executor.Start();
         
         ASSERT_TRUE(!executor.IsStopped());
-        ASSERT_EQ(executor.Size(), kWorkers);
+        ASSERT_EQ(executor.WorkerCount(), kWorkers);
         ASSERT_EQ(executor.GetActiveTasks(), 0);
     }
 }
