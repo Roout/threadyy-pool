@@ -33,7 +33,7 @@ public:
     virtual ~ThreadPool();
     
     /**
-     * Post already ready task
+     * Post already created task
      * @return true if task was successfully added 
     */
     [[nodiscard]] bool Post(Task&& task)
@@ -42,18 +42,29 @@ public:
         return pending_tasks_.TryPush(std::move(task));
     }
 
+    /**
+     * Not atomic operations so:
+     * If called after stop - must be invoked by the same thread who invoked `Stop()`
+    */
     virtual void Start();
 
+    /**
+     * Not atomic operations so:
+     * Must be called by the same thread who invoked `Start()` 
+     * or be sure that threadpool is not stopped and nobody else is trying to stop
+    */
     virtual void Stop();
 
-    std::size_t Size() const noexcept {
+    virtual bool IsStopped() const noexcept {
+        return stopped_.load(std::memory_order_acquire);
+    }
+
+    std::size_t WorkerCount() const noexcept {
         return worker_count_;
     }
+    
     std::size_t GetActiveTasks() const noexcept {
         return active_tasks_.load(std::memory_order_acquire);
-    }
-    bool IsStopped() const noexcept {
-        return stopped_.load(std::memory_order_acquire);
     }
 private:
     const std::size_t worker_count_ { 0 };
