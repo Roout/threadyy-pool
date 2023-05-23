@@ -51,6 +51,10 @@ public:
      */
     void Start();
 
+    bool IsStopped() const noexcept {
+        return !timer_.joinable();
+    }
+
 private:
     /**
      * Background worker: track time for callbacks
