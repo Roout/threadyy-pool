@@ -9,9 +9,22 @@ class TimedThreadPool : public ThreadPool {
 public:
     TimedThreadPool(size_t threads);
 
+    /**
+     * Not atomic operation so:
+     * If called after stop - must be invoked by the same thread who invoked `Stop()`
+    */
     void Start() override;
 
+    /**
+     * Not atomic operation so:
+     * Must be called by the same thread who invoked `Start()` 
+     * or be sure that threadpool is not stopped and nobody else is trying to stop
+    */
     void Stop() override;
+
+    bool IsStopped() const noexcept override {
+        return scheduler_.IsStopped() && ThreadPool::IsStopped();
+    }
 
     void Post(Task&& task, Timeout delay) {
         scheduler_.ScheduleAfter(delay, std::move(task));
@@ -23,6 +36,7 @@ public:
 
 private:
     Scheduler scheduler_;
+    // Actually it's more usefull for asserts than for smth else
     std::atomic<bool> stopped_;
 };
 
