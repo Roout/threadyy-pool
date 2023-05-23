@@ -4,6 +4,7 @@ set(This executor_tests)
 
 set(headers 
     thread_pool_test.hpp
+    timed_thread_pool_test.hpp
     scheduler_test.hpp
 )
 
