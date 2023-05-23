@@ -18,11 +18,6 @@ class ThreadPool;
 using Timeout = std::chrono::milliseconds;
 using Timepoint = std::chrono::steady_clock::time_point;
 
-class FullQueueException : public std::exception {
-public:
-    using std::exception::exception;
-};
-
 class Scheduler {
 public:
     
