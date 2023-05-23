@@ -21,20 +21,20 @@ public:
     using element = T;
     using container = std::array<element, kCapacity>;
  
-    CcQueue(bool sentinel = true) 
+    CcQueue() 
         : front_ { 0 }
         , back_ { 0 }
         , size_ { 0 }
-        , sentinel_ { sentinel }
+        , halt_ { true }
     {
         assert(front_ == back_);
     }
- 
+
     // return true if value was pushed successfully (queue is not full)
     // otherwise return false on failure and doesn't block
     [[nodiscard]] bool TryPush(element cmd) {
         bool is_pushed = false;
-        if (std::unique_lock<std::mutex> lock { mutex_ }; 
+        if (std::unique_lock<std::mutex> lock { mutex_ };
             !IsFull()
         ) {
             PushBack(std::move(cmd));
@@ -50,9 +50,9 @@ public:
     // otherwise blocks
     // Note: it ignores sentinel so you can't stop consumer thread
     [[nodiscard]] element Pop() {
-        std::unique_lock<std::mutex> lock { mutex_ };  
-        notifier_.wait(lock, [this]() { 
-            return !IsEmpty(); 
+        std::unique_lock<std::mutex> lock { mutex_ };
+        notifier_.wait(lock, [this]() {
+            return !IsEmpty();
         });
         return PopFront();
     }
@@ -63,10 +63,10 @@ public:
     [[nodiscard]] std::optional<element> TryPop() {
         std::optional<element> result{};
  
-        std::unique_lock<std::mutex> lock { mutex_ };  
-        notifier_.wait(lock, [this]() { 
+        std::unique_lock<std::mutex> lock { mutex_ };
+        notifier_.wait(lock, [this]() {
             // wait (block) while the <empty> queue has <sentinel>
-            return !(IsEmpty() && sentinel_.load(std::memory_order_relaxed)); 
+            return !IsEmpty() || !halt_;
         });
         if (!IsEmpty()) {
             result.emplace(PopFront());
@@ -75,9 +75,18 @@ public:
         return result;
     }
  
-    void DisableSentinel() noexcept {
-        sentinel_.store(false, std::memory_order_relaxed);
+    void Halt() noexcept {
+        {
+            std::lock_guard lock{ mutex_ };
+            halt_ = false;
+        }
         notifier_.notify_all();
+    }
+
+    void Resume() noexcept {
+        std::lock_guard lock{ mutex_ };
+        halt_ = true;
+       // no need to notify as noone wait on it: notifier_.notify_all();
     }
  
 private:
@@ -104,12 +113,14 @@ private:
     [[nodiscard]] bool IsFull() const noexcept {
         return size_ == kCapacity;
     }
- 
+    
+    static constexpr std::chrono::milliseconds kMaxTimeout { 100 };
+
     std::mutex mutex_;
     std::condition_variable notifier_;
     container container_;
     std::size_t front_ { 0 };
     std::size_t back_ { 0 };
     std::size_t size_ { 0 };
-    std::atomic<bool> sentinel_;
-};
+    bool halt_;
+}; 
