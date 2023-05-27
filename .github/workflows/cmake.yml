@@ -26,7 +26,7 @@ jobs:
     - name: Install compilers
       run: |
          sudo apt update
-         sudo apt install gcc-12 g++-12
+         sudo apt install gcc-12.1 g++-12.1
       shell: bash
 
     - name: Configure CMake
@@ -34,8 +34,8 @@ jobs:
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DDOWNLOAD_GTEST=${{env.DOWNLOAD_GTEST}} -DBUILD_STATIC_LIB=${{env.BUILD_STATIC_LIB}} -DBUILD_TESTS=${{env.BUILD_TESTS}} -DBUILD_EXE=${{env.BUILD_EXE}}
       env:
-        CC:   gcc-12
-        CXX:  g++-12
+        CC:   gcc-12.1
+        CXX:  g++-12.1
     
     - name: Build
       # Build your program with the given configuration
