@@ -11,6 +11,8 @@ Make thread pool
 ## Build
 
 ```
+cd build
+cmake  .. -DDOWNLOAD_GTEST=ON -DBUILD_STATIC_LIB=ON -DBUILD_TESTS=OFF -DBUILD_EXE=OFF
 cmake --build . --target install --config Debug
 ```
 
