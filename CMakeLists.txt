@@ -7,10 +7,10 @@ project(${This} VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_TESTS "Build the tests" ON)
-option(DOWNLOAD_GTEST "Download googletest" ON)
-option(BUILD_STATIC_LIB "Build the static library" ON)
-option(BUILD_EXE "Build the executable" ON)
+option(BUILD_TESTS          "Build the tests"           ON)
+option(DOWNLOAD_GTEST       "Download googletest"       ON)
+option(BUILD_STATIC_LIB     "Build the static library"  ON)
+option(BUILD_EXE            "Build the executable"      ON)
 
 add_subdirectory("src")
 
