@@ -63,7 +63,8 @@ class Task {
   }
 
   template <traits::Bindable Func, traits::Bindable... Args>
-  requires traits::Taskable<Func, Args...> Task(Func&& f, Args&&... args) {
+    requires traits::Taskable<Func, Args...>
+  Task(Func&& f, Args&&... args) {
     using R = std::invoke_result_t<Func, Args...>;
 #ifdef _MSC_VER
     std::promise<R> promise;
