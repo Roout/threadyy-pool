@@ -1,6 +1,6 @@
 # Thread pool
 
-Make thread pool
+A simple thread pool with a timer (mostly for learning purpose)
 
 ## Requirements
 
